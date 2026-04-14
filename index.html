@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BRI Table Exporter • Fix Persen & TOTAL</title>
+  <title>BRI Table Exporter • Fix Persen & Merge TOTAL</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
@@ -34,6 +34,7 @@
     th:nth-child(3) { text-align: left; }
     tr:nth-child(even) td { background: #f0f5ff; }
     .total-row td { background: #1B3A6B !important; color: white !important; font-weight: bold; }
+    .total-row td:first-child { text-align: left; }
     .rate-cell { background: #FFF3E0; color: #E8821A; font-weight: bold; }
     .footer { margin-top: 30px; text-align: center; opacity: 0.5; font-size: 13px; }
   </style>
@@ -62,7 +63,7 @@
   </div>
 
   <div id="tablesContainer" class="tables-grid"></div>
-  <div class="footer">Kolom BRI UNIT rata kiri • Persentase otomatis dari desimal • TOTAL muncul</div>
+  <div class="footer">Kolom BRI UNIT rata kiri • Persen >100% utuh • TOTAL merge kiri</div>
 </div>
 
 <script>
@@ -107,24 +108,23 @@
       return num.toLocaleString('id-ID');
     }
 
-    // Format persentase: dari desimal (0.7027) jadi 70,3%
+    // Format persentase: pertahankan nilai asli dari Excel (hanya ganti titik ke koma jika perlu)
     function formatPercent(val) {
       if (val === null || val === undefined) return '0,0%';
       let str = String(val).trim();
       if (str === '') return '0,0%';
-      // Jika sudah mengandung '%', pertahankan (mungkin sudah diformat)
+      // Jika sudah mengandung '%', anggap sudah benar, hanya ganti titik desimal ke koma
       if (str.includes('%')) {
-        // Ganti titik dengan koma jika perlu
         return str.replace('.', ',');
       }
-      // Coba parse sebagai angka
+      // Jika tidak ada '%', coba parse sebagai angka
       const num = parseFloat(str.replace(',', '.'));
       if (isNaN(num)) return str;
-      // Jika nilai absolut >= 1, anggap sudah persen (misal 70.3)
+      // Jika nilai >= 1, anggap sudah dalam persen (misal 121.3 → 121,3%)
       if (Math.abs(num) >= 1) {
         return num.toFixed(1).replace('.', ',') + '%';
       } else {
-        // Desimal seperti 0.7027 -> kalikan 100
+        // Desimal < 1 (misal 0.16 → 16%)
         return (num * 100).toFixed(1).replace('.', ',') + '%';
       }
     }
@@ -226,13 +226,12 @@
           const dataColCount = hasSub ? subCols.length : 1;
           const dataStartRow = hasSub ? subIndex + 1 : i + 1;
 
-          // Ambil semua baris sampai baris kosong total (atau sampai 30 baris)
+          // Ambil semua baris sampai baris kosong total
           const rows = [];
           for (let r = dataStartRow; r < dataStartRow + 30 && r < data.length; r++) {
             const dRow = data[r];
             if (dRow.every(c => c === '')) break;
             rows.push([...dRow]);
-            // Tidak berhenti meski ketemu TOTAL, kita akan deteksi saat render
           }
 
           if (rows.length > 0) {
@@ -311,42 +310,68 @@
         // TBODY
         const tbody = document.createElement('tbody');
         rows.forEach((row, ri) => {
-          // Deteksi apakah ini baris TOTAL (cari kata TOTAL di seluruh baris, case-insensitive)
+          // Deteksi TOTAL (case-insensitive di seluruh baris)
           const isTotal = row.some(cell => getRawValue(cell).toUpperCase().includes('TOTAL'));
           const tr = document.createElement('tr');
           if (isTotal) tr.classList.add('total-row');
 
-          // Sel kiri (NO, Branch, BRI UNIT, Σ MANTRI)
-          for (let col = 0; col < catIndex; col++) {
-            const td = document.createElement('td');
-            let val = getRawValue(row[col]);
-            if (val === '' && isTotal && col === 0) val = 'TOTAL';
-            td.textContent = val;
-            tr.appendChild(td);
-          }
+          if (isTotal) {
+            // Baris TOTAL: merge kolom dari 0 sampai sebelum data, lalu isi "TOTAL" rata kiri
+            const tdTotal = document.createElement('td');
+            tdTotal.colSpan = catIndex;
+            tdTotal.textContent = 'TOTAL';
+            tdTotal.style.textAlign = 'left';
+            tdTotal.style.fontWeight = 'bold';
+            tr.appendChild(tdTotal);
 
-          // Sel data (Komitmen, Hasil, Gap)
-          for (let d = 0; d < dataColCount; d++) {
-            const td = document.createElement('td');
-            let val = getRawValue(row[dataStartCol + d]);
-            if (val === '') val = (d === dataColCount-1) ? '-' : '0';
-            if (d === dataColCount - 1) {
-              td.textContent = formatGap(val);
-            } else {
-              td.textContent = formatNumber(val);
+            // Sel data (Komitmen, Hasil, Gap)
+            for (let d = 0; d < dataColCount; d++) {
+              const td = document.createElement('td');
+              let val = getRawValue(row[dataStartCol + d]);
+              if (val === '') val = (d === dataColCount-1) ? '-' : '0';
+              if (d === dataColCount - 1) {
+                td.textContent = formatGap(val);
+              } else {
+                td.textContent = formatNumber(val);
+              }
+              tr.appendChild(td);
             }
+
+            // Sel Sukses Rate
+            const rateIdx = dataStartCol + dataColCount;
+            const td = document.createElement('td');
+            td.classList.add('rate-cell');
+            let rateVal = (rateIdx < row.length) ? getRawValue(row[rateIdx]) : '';
+            if (rateVal === '') rateVal = '0,0%';
+            td.textContent = formatPercent(rateVal);
+            tr.appendChild(td);
+          } else {
+            // Baris data biasa
+            for (let col = 0; col < catIndex; col++) {
+              const td = document.createElement('td');
+              let val = getRawValue(row[col]);
+              td.textContent = val;
+              tr.appendChild(td);
+            }
+            for (let d = 0; d < dataColCount; d++) {
+              const td = document.createElement('td');
+              let val = getRawValue(row[dataStartCol + d]);
+              if (val === '') val = (d === dataColCount-1) ? '-' : '0';
+              if (d === dataColCount - 1) {
+                td.textContent = formatGap(val);
+              } else {
+                td.textContent = formatNumber(val);
+              }
+              tr.appendChild(td);
+            }
+            const rateIdx = dataStartCol + dataColCount;
+            const td = document.createElement('td');
+            td.classList.add('rate-cell');
+            let rateVal = (rateIdx < row.length) ? getRawValue(row[rateIdx]) : '';
+            if (rateVal === '') rateVal = '0,0%';
+            td.textContent = formatPercent(rateVal);
             tr.appendChild(td);
           }
-
-          // Sel Sukses Rate
-          const rateIdx = dataStartCol + dataColCount;
-          const td = document.createElement('td');
-          td.classList.add('rate-cell');
-          let rateVal = (rateIdx < row.length) ? getRawValue(row[rateIdx]) : '';
-          if (rateVal === '') rateVal = '0,0%';
-          // Format persentase dari desimal jika perlu
-          td.textContent = formatPercent(rateVal);
-          tr.appendChild(td);
 
           tbody.appendChild(tr);
         });
