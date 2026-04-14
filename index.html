@@ -3,44 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel BRI - 6 Tabel dalam 1 Sheet → PNG</title>
+    <title>BRI Multi Tabel → PNG (Preview Seperti Screenshot)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            max-width: 1400px;
-            margin: 20px auto;
-            padding: 20px;
-            background: #f0f4f8;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: #eef2f6;
+            padding: 24px;
         }
         .card {
+            max-width: 1400px;
+            margin: 0 auto;
             background: white;
-            border-radius: 24px;
+            border-radius: 20px;
             padding: 28px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
         }
         h1 {
             color: #003d66;
-            margin-top: 0;
+            font-size: 26px;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
         .badge {
             background: #00529B;
             color: white;
-            padding: 4px 14px;
+            padding: 4px 16px;
             border-radius: 30px;
             font-size: 16px;
+            font-weight: 500;
         }
         .upload-area {
-            border: 3px dashed #00529B;
-            border-radius: 20px;
-            padding: 25px;
+            border: 2px dashed #00529B;
+            border-radius: 16px;
+            padding: 20px;
             text-align: center;
-            background: #f0f7ff;
+            background: #f7faff;
             margin: 20px 0;
         }
         input[type="file"] {
@@ -52,59 +54,54 @@
             align-items: center;
             gap: 20px;
             flex-wrap: wrap;
-            margin: 25px 0 15px;
+            margin: 20px 0;
         }
-        select, input {
-            padding: 10px 16px;
+        select {
+            padding: 10px 20px;
             font-size: 15px;
             border-radius: 40px;
-            border: 1px solid #ccc;
-            min-width: 180px;
+            border: 1px solid #bbb;
+            min-width: 200px;
+            background: white;
         }
         button {
             background: #00529B;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 12px 28px;
             border-radius: 40px;
             font-size: 15px;
             font-weight: bold;
             cursor: pointer;
-            border: 1px solid #004080;
-            transition: 0.2s;
             box-shadow: 0 4px 8px rgba(0,82,155,0.15);
+            transition: 0.2s;
         }
-        button:hover {
-            background: #003f7a;
-            transform: translateY(-2px);
-        }
+        button:hover { background: #003f7a; transform: translateY(-1px); }
+        button:disabled { opacity: 0.5; pointer-events: none; }
         button.outline {
             background: white;
             color: #00529B;
-            box-shadow: none;
             border: 1px solid #00529B;
-        }
-        button.outline:hover {
-            background: #e6f0ff;
+            box-shadow: none;
         }
         #statusMsg {
             margin: 15px 0;
             font-weight: 500;
             color: #1e7e34;
-            min-height: 30px;
+            min-height: 28px;
         }
         .tables-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
-            margin-top: 25px;
+            gap: 24px;
+            margin-top: 20px;
         }
         .table-card {
             background: white;
-            border-radius: 16px;
-            padding: 16px;
+            border-radius: 12px;
+            padding: 16px 16px 20px 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            border: 1px solid #e2e8f0;
+            border: 1px solid #d9e2ec;
             flex: 1 1 auto;
             max-width: 100%;
         }
@@ -112,88 +109,90 @@
             font-weight: 700;
             font-size: 18px;
             color: #00529B;
-            margin-bottom: 12px;
-            padding-left: 8px;
-            border-left: 6px solid #00529B;
+            margin-bottom: 14px;
+            padding-left: 10px;
+            border-left: 5px solid #00529B;
         }
         table {
             border-collapse: collapse;
             font-size: 13px;
-            background: white;
             width: 100%;
-            border: 1px solid #b0c4de;
+            border: 1px solid #9bb7d4;
+            background: white;
         }
         th {
             background-color: #00529B;
             color: white;
-            padding: 10px 8px;
+            padding: 10px 6px;
             text-align: center;
             font-weight: 600;
-            border: 1px solid #003f7a;
+            border: 1px solid #1e3a5f;
+            vertical-align: middle;
         }
         td {
             padding: 8px 6px;
             text-align: center;
-            border: 1px solid #b0c4de;
+            border: 1px solid #9bb7d4;
+            vertical-align: middle;
         }
         tr:nth-child(even) {
             background-color: #f2f7ff;
         }
+        .total-row {
+            font-weight: bold;
+            background-color: #e6f0ff !important;
+        }
         .footer-note {
             margin-top: 30px;
-            color: #555;
+            color: #4a5568;
             font-size: 14px;
-            border-top: 1px solid #ddd;
+            border-top: 1px solid #cbd5e0;
             padding-top: 20px;
         }
-        .small-note {
-            font-size: 13px;
-            color: #666;
-            margin-left: 15px;
-        }
+        .small-note { font-size: 13px; color: #4b5563; margin-left: 10px; }
     </style>
 </head>
 <body>
 <div class="card">
     <h1>
-        <span>📊 BRI Unit · Multi‑Tabel dalam 1 Sheet</span>
-        <span class="badge">Upload → Deteksi 6 Tabel → PNG</span>
+        <span>📋 BRI Unit · Laporan Harian ke PNG</span>
+        <span class="badge">Preview Sesuai Screenshot</span>
     </h1>
-    <p>Upload file Excel. Semua tabel yang ada di <strong>satu sheet</strong> akan dideteksi otomatis berdasarkan header "NO | Branch | BRI UNIT ...".</p>
+    <p>Upload file Excel. Pilih sheet yang berisi tabel-tabel. Header dua tingkat (Komitmen/Hasil/Gap) akan otomatis dikenali.</p>
 
     <div class="upload-area">
         <input type="file" id="excelUpload" accept=".xlsx, .xls">
-        <p style="margin-top: 12px; color: #444;">⬆ Pilih file Excel (format .xlsx / .xls)</p>
+        <p style="margin-top: 10px; color: #2c3e50;">⬆ Klik untuk pilih file Excel</p>
     </div>
 
     <div class="control-bar">
         <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-weight:600;">📑 Sheet sumber:</span>
+            <span style="font-weight:600;">📑 Sheet:</span>
             <select id="sheetSelect" disabled>
                 <option>-- Upload dulu --</option>
             </select>
         </div>
-        <button id="btnDetect" onclick="detectAndRenderTables()" disabled>🔍 Deteksi Tabel</button>
-        <button id="btnDownloadAll" onclick="downloadAllTables()" disabled>📸 Download Semua Tabel (PNG)</button>
+        <button id="btnDetect" onclick="detectAndRenderTables()" disabled>🔍 Deteksi & Tampilkan</button>
+        <button id="btnDownloadAll" onclick="downloadAllTables()" disabled>📸 Download Semua (PNG)</button>
         <span class="small-note" id="tableCountDisplay"></span>
     </div>
 
     <div id="statusMsg" class="status">⏳ Menunggu file Excel...</div>
 
     <div id="tablesContainer" class="tables-grid">
-        <!-- Hasil render tabel akan muncul di sini -->
+        <!-- Preview tabel akan dirender di sini -->
     </div>
 
     <div class="footer-note">
-        ✅ <strong>Cara kerja:</strong> Upload → Pilih sheet yang berisi banyak tabel → Klik "Deteksi Tabel".<br>
-        💡 Aplikasi akan mencari blok data yang diawali dengan header "NO", "Branch", dll., lalu memisahkannya menjadi tabel mandiri.<br>
-        ⚡ Setelah tabel muncul, klik "Download Semua Tabel" untuk mendapatkan 6 file PNG sekaligus.
+        ✅ <strong>Fitur:</strong> Header dua baris (Realisasi → Komitmen/Hasil/Gap) otomatis terdeteksi.<br>
+        💡 Klik "Deteksi" untuk melihat pratinjau, lalu "Download Semua" untuk simpan sebagai gambar PNG terpisah.
     </div>
 </div>
 
 <script>
     let globalWorkbook = null;
-    let detectedTables = []; // array of { title, htmlElement }
+    let detectedTables = []; // { title, element }
+
     const statusEl = document.getElementById('statusMsg');
     const sheetSelect = document.getElementById('sheetSelect');
     const btnDetect = document.getElementById('btnDetect');
@@ -201,7 +200,7 @@
     const container = document.getElementById('tablesContainer');
     const tableCountDisplay = document.getElementById('tableCountDisplay');
 
-    // Upload Excel
+    // --- Upload Excel ---
     document.getElementById('excelUpload').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -220,15 +219,15 @@
                     const option = document.createElement('option');
                     option.value = name;
                     option.textContent = name;
-                    if (idx === 0) option.selected = true; // default pilih sheet pertama
+                    if (idx === 0) option.selected = true;
                     sheetSelect.appendChild(option);
                 });
                 
                 sheetSelect.disabled = false;
                 btnDetect.disabled = false;
-                statusEl.innerText = `✅ File terbaca. ${sheetNames.length} sheet ditemukan. Pilih sheet lalu klik "Deteksi Tabel".`;
+                statusEl.innerText = `✅ File terbaca. ${sheetNames.length} sheet. Pilih sheet lalu klik "Deteksi".`;
             } catch (err) {
-                statusEl.innerText = '❌ Gagal membaca file Excel. Pastikan format valid.';
+                statusEl.innerText = '❌ Gagal membaca file Excel.';
                 console.error(err);
             }
         };
@@ -236,13 +235,9 @@
         reader.readAsArrayBuffer(file);
     });
 
-    // Fungsi utama: deteksi tabel dalam sheet yang dipilih
+    // --- Deteksi & Render Tabel (dengan header dua tingkat) ---
     function detectAndRenderTables() {
-        if (!globalWorkbook) {
-            alert('Upload file dulu.');
-            return;
-        }
-        
+        if (!globalWorkbook) { alert('Upload file dulu.'); return; }
         const sheetName = sheetSelect.value;
         if (!sheetName) return;
         
@@ -252,18 +247,17 @@
         
         try {
             const worksheet = globalWorkbook.Sheets[sheetName];
-            // Konversi sheet ke array 2D (array of arrays)
             const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             
-            // Cari blok-blok tabel berdasarkan keberadaan header "NO" di kolom pertama
+            // Pecah menjadi blok tabel berdasarkan header "NO"
             const tableBlocks = [];
             let currentBlock = [];
-            let headerRowIndex = -1;
             
             for (let i = 0; i < sheetData.length; i++) {
                 const row = sheetData[i];
-                if (!row || row.length === 0) {
-                    // Baris kosong -> penanda akhir blok (kecuali jika currentBlock masih kosong)
+                const isEmptyRow = !row || row.every(cell => cell === null || cell === undefined || String(cell).trim() === '');
+                
+                if (isEmptyRow) {
                     if (currentBlock.length > 0) {
                         tableBlocks.push(currentBlock);
                         currentBlock = [];
@@ -271,52 +265,40 @@
                     continue;
                 }
                 
-                // Cek apakah ini baris header (kolom pertama berisi "NO" atau "No")
                 const firstCell = String(row[0] || '').trim().toUpperCase();
                 if (firstCell === 'NO' || firstCell === 'NO.') {
-                    // Jika sudah ada blok sebelumnya, simpan dulu
                     if (currentBlock.length > 0) {
                         tableBlocks.push(currentBlock);
                         currentBlock = [];
                     }
-                    headerRowIndex = i;
-                    currentBlock.push(row); // tambahkan baris header
+                    currentBlock.push(row);
                 } else if (currentBlock.length > 0) {
-                    // Lanjutkan blok yang sedang dikumpulkan
                     currentBlock.push(row);
                 }
-                // Abaikan baris lain di luar blok
             }
-            // Tambahkan blok terakhir jika ada
-            if (currentBlock.length > 0) {
-                tableBlocks.push(currentBlock);
-            }
+            if (currentBlock.length > 0) tableBlocks.push(currentBlock);
             
-            // Filter blok yang setidaknya punya 2 baris (header + minimal 1 data)
             const validBlocks = tableBlocks.filter(block => block.length >= 2);
-            
             if (validBlocks.length === 0) {
-                statusEl.innerText = '⚠️ Tidak ditemukan tabel dengan header "NO". Pastikan sheet memiliki format yang sesuai.';
+                statusEl.innerText = '⚠️ Tidak ditemukan tabel dengan header "NO".';
                 return;
             }
             
-            // Render setiap blok menjadi tabel HTML
+            // Render setiap blok
             validBlocks.forEach((block, idx) => {
                 const tableWrapper = document.createElement('div');
                 tableWrapper.className = 'table-card';
                 
-                // Tentukan judul tabel (bisa dari baris sebelum header atau ekstrak dari header)
+                // --- Tentukan judul tabel ---
                 let title = `Tabel ${idx+1}`;
                 const headerRow = block[0];
-                // Coba cari judul di kolom ke-5 (index 4) karena biasanya "Realisasi", dll.
+                // Cari di kolom ke-5 (index 4) biasanya "Realisasi", "Recovery DH", dll.
                 if (headerRow.length >= 5) {
-                    const possibleTitle = String(headerRow[4] || '').trim();
-                    if (possibleTitle && !possibleTitle.includes('Sukses') && possibleTitle.length > 2) {
-                        title = possibleTitle;
+                    const possible = String(headerRow[4] || '').trim();
+                    if (possible && !possible.includes('Sukses') && possible.length > 1) {
+                        title = possible;
                     }
                 }
-                // Fallback: cek apakah ada baris teks sebelum header (opsional)
-                // Tidak implementasi kompleks, anggap cukup.
                 
                 const titleDiv = document.createElement('div');
                 titleDiv.className = 'table-title';
@@ -325,35 +307,120 @@
                 
                 const table = document.createElement('table');
                 
-                // Header (baris pertama blok)
+                // --- Analisis header: deteksi apakah ada baris sub-header (Komitmen, Hasil, Gap) ---
+                // Header baris pertama selalu block[0]
+                // Cek baris berikutnya: jika ada sel yang mengandung "Komitmen", "Hasil", "Gap", maka itu sub-header.
+                let headerRows = [block[0]];
+                let dataStartIndex = 1;
+                
+                if (block.length > 1) {
+                    const secondRow = block[1];
+                    const secondRowText = secondRow.map(c => String(c || '').toLowerCase()).join(' ');
+                    if (secondRowText.includes('komitmen') || secondRowText.includes('hasil') || secondRowText.includes('gap')) {
+                        headerRows.push(secondRow);
+                        dataStartIndex = 2;
+                    } else {
+                        // Cek apakah baris kedua adalah data (diawali angka)
+                        const firstColSecond = String(secondRow[0] || '').trim();
+                        if (!firstColSecond.match(/^\d/) && !firstColSecond.toUpperCase().includes('TOTAL')) {
+                            // Mungkin header tambahan lain
+                            headerRows.push(secondRow);
+                            dataStartIndex = 2;
+                        }
+                    }
+                }
+                
+                // --- Render THEAD dengan rowspan/colspan sesuai struktur ---
                 const thead = document.createElement('thead');
-                const trHead = document.createElement('tr');
-                headerRow.forEach(cell => {
-                    const th = document.createElement('th');
-                    th.innerText = cell !== null && cell !== undefined ? String(cell) : '';
-                    trHead.appendChild(th);
-                });
-                thead.appendChild(trHead);
+                
+                // Dapatkan jumlah kolom maksimum dari header pertama
+                const maxCols = headerRows[0].length;
+                
+                // Jika header dua baris, kita perlu merge sel yang sesuai
+                if (headerRows.length === 2) {
+                    const row1 = headerRows[0];
+                    const row2 = headerRows[1];
+                    
+                    // Baris pertama header
+                    const tr1 = document.createElement('tr');
+                    for (let col = 0; col < maxCols; col++) {
+                        const th = document.createElement('th');
+                        let cellValue = row1[col] !== undefined ? String(row1[col]) : '';
+                        
+                        // Cek apakah di bawahnya ada sub-kolom (row2 memiliki nilai bukan kosong untuk range tertentu)
+                        // Misal: kolom "Realisasi" di row1, lalu row2 memiliki "Komitmen", "Hasil", "Gap" di kolom 4,5,6
+                        // Kita perlu menentukan colspan
+                        let colspan = 1;
+                        if (col === 4 && row2.length > col && row2[col] && row2[col+1] && row2[col+2]) {
+                            // Asumsi: Realisasi memiliki 3 sub-kolom
+                            const nextCells = [row2[col], row2[col+1], row2[col+2]].map(c => String(c||'').trim());
+                            if (nextCells.some(c => c.includes('Komitmen') || c.includes('Hasil') || c.includes('Gap'))) {
+                                colspan = 3;
+                            }
+                        }
+                        // Bisa tambahkan aturan lain jika perlu
+                        
+                        th.setAttribute('colspan', colspan);
+                        th.innerText = cellValue;
+                        tr1.appendChild(th);
+                    }
+                    thead.appendChild(tr1);
+                    
+                    // Baris kedua header (sub-header)
+                    const tr2 = document.createElement('tr');
+                    for (let col = 0; col < maxCols; col++) {
+                        // Jika kolom ini sudah termasuk dalam colspan di atas, lewati
+                        // Cek apakah kolom sebelumnya sudah di-merge
+                        let skip = false;
+                        if (col > 0) {
+                            // Cek colspan dari sel sebelumnya di tr1
+                            const prevTh = tr1.children[col-1];
+                            if (prevTh && prevTh.getAttribute('colspan')) {
+                                const span = parseInt(prevTh.getAttribute('colspan'));
+                                if (col < (parseInt(prevTh.cellIndex) + span)) {
+                                    skip = true;
+                                }
+                            }
+                        }
+                        if (skip) continue;
+                        
+                        const th = document.createElement('th');
+                        let cellValue = row2[col] !== undefined ? String(row2[col]) : '';
+                        th.innerText = cellValue;
+                        tr2.appendChild(th);
+                    }
+                    thead.appendChild(tr2);
+                } else {
+                    // Hanya satu baris header
+                    const tr = document.createElement('tr');
+                    headerRows[0].forEach(cell => {
+                        const th = document.createElement('th');
+                        th.innerText = cell !== undefined ? String(cell) : '';
+                        tr.appendChild(th);
+                    });
+                    thead.appendChild(tr);
+                }
+                
                 table.appendChild(thead);
                 
-                // Body (sisa baris)
+                // --- Render TBODY (data) ---
                 const tbody = document.createElement('tbody');
-                for (let i = 1; i < block.length; i++) {
-                    const dataRow = block[i];
+                for (let i = dataStartIndex; i < block.length; i++) {
+                    const rowData = block[i];
                     const tr = document.createElement('tr');
                     
-                    // Cek apakah ini baris TOTAL (mengandung kata "TOTAL" di sel pertama)
-                    const firstCellVal = String(dataRow[0] || '').toUpperCase();
-                    if (firstCellVal.includes('TOTAL')) {
-                        tr.style.fontWeight = 'bold';
-                        tr.style.backgroundColor = '#e6f0ff';
+                    const firstCol = String(rowData[0] || '').toUpperCase();
+                    if (firstCol.includes('TOTAL')) {
+                        tr.classList.add('total-row');
                     }
                     
-                    dataRow.forEach(cell => {
+                    // Pastikan jumlah kolom sesuai dengan maxCols
+                    for (let col = 0; col < maxCols; col++) {
                         const td = document.createElement('td');
-                        td.innerText = cell !== null && cell !== undefined ? String(cell) : '';
+                        let val = rowData[col];
+                        td.innerText = (val !== null && val !== undefined) ? String(val) : '';
                         tr.appendChild(td);
-                    });
+                    }
                     tbody.appendChild(tr);
                 }
                 table.appendChild(tbody);
@@ -361,57 +428,42 @@
                 tableWrapper.appendChild(table);
                 container.appendChild(tableWrapper);
                 
-                // Simpan untuk download
                 detectedTables.push({
                     title: title,
                     element: tableWrapper
                 });
             });
             
-            tableCountDisplay.innerText = `✅ ${detectedTables.length} tabel terdeteksi`;
-            statusEl.innerText = `✅ Berhasil mendeteksi ${detectedTables.length} tabel.`;
+            tableCountDisplay.innerText = `✅ ${detectedTables.length} tabel`;
+            statusEl.innerText = `✅ ${detectedTables.length} tabel berhasil dirender.`;
             btnDownloadAll.disabled = detectedTables.length === 0;
             
         } catch (err) {
-            statusEl.innerText = `❌ Gagal mendeteksi: ${err.message}`;
+            statusEl.innerText = `❌ Gagal: ${err.message}`;
             console.error(err);
         }
     }
 
-    // Download semua tabel yang sudah dirender
+    // --- Download semua tabel sebagai PNG ---
     async function downloadAllTables() {
         if (detectedTables.length === 0) {
-            alert('Tidak ada tabel untuk diunduh. Deteksi dulu.');
+            alert('Tidak ada tabel. Deteksi dulu.');
             return;
         }
         
         statusEl.innerText = `📸 Memproses ${detectedTables.length} gambar...`;
         btnDownloadAll.disabled = true;
         
-        // Buat container tersembunyi untuk rendering background (hindari distorsi tampilan)
-        const hiddenDiv = document.createElement('div');
-        hiddenDiv.style.position = 'absolute';
-        hiddenDiv.style.left = '-9999px';
-        hiddenDiv.style.top = '0';
-        hiddenDiv.style.visibility = 'hidden';
-        document.body.appendChild(hiddenDiv);
-        
         try {
             for (let i = 0; i < detectedTables.length; i++) {
                 const item = detectedTables[i];
                 statusEl.innerText = `📸 Mengunduh ${i+1}/${detectedTables.length}: ${item.title}`;
                 
-                // Clone elemen agar tidak mengganggu tampilan
-                const cloneWrapper = item.element.cloneNode(true);
-                cloneWrapper.style.width = item.element.offsetWidth + 'px'; // pertahankan lebar
-                cloneWrapper.style.margin = '0';
-                hiddenDiv.appendChild(cloneWrapper);
+                const element = item.element;
                 
-                // Tunggu render
-                await new Promise(resolve => setTimeout(resolve, 150));
-                
-                const canvas = await html2canvas(cloneWrapper, {
-                    scale: 1.8,
+                // Pastikan elemen siap di-capture
+                const canvas = await html2canvas(element, {
+                    scale: 2.2,
                     backgroundColor: '#ffffff',
                     allowTaint: false,
                     useCORS: true,
@@ -424,20 +476,18 @@
                 link.href = canvas.toDataURL('image/png');
                 link.click();
                 
-                hiddenDiv.removeChild(cloneWrapper);
+                await new Promise(resolve => setTimeout(resolve, 150));
             }
             
-            statusEl.innerText = `🎉 Selesai! ${detectedTables.length} gambar berhasil diunduh.`;
+            statusEl.innerText = `🎉 Selesai! ${detectedTables.length} gambar diunduh.`;
         } catch (err) {
             statusEl.innerText = `❌ Gagal mengunduh: ${err.message}`;
             console.error(err);
         } finally {
-            document.body.removeChild(hiddenDiv);
             btnDownloadAll.disabled = false;
         }
     }
 
-    // Expose fungsi ke global
     window.detectAndRenderTables = detectAndRenderTables;
     window.downloadAllTables = downloadAllTables;
 </script>
