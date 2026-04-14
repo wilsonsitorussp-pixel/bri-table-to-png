@@ -63,7 +63,7 @@
   </div>
 
   <div id="tablesContainer" class="tables-grid"></div>
-  <div class="footer">Kolom BRI UNIT rata kiri • Persen >100% utuh • TOTAL merge kiri</div>
+  <div class="footer">Kolom BRI UNIT rata kiri • Persen akurat (0.16→16%) • TOTAL merge kiri</div>
 </div>
 
 <script>
@@ -88,7 +88,6 @@
       return String(val).trim();
     }
 
-    // Format angka biasa (titik ribuan)
     function formatNumber(str) {
       if (!str) return '0';
       if (str.includes('.') && str.length > 3) return str;
@@ -97,7 +96,6 @@
       return num.toLocaleString('id-ID');
     }
 
-    // Format gap (negatif dalam kurung)
     function formatGap(str) {
       if (!str) return '-';
       if (str.startsWith('(') && str.endsWith(')')) return str;
@@ -108,25 +106,27 @@
       return num.toLocaleString('id-ID');
     }
 
-    // Format persentase: pertahankan nilai asli dari Excel (hanya ganti titik ke koma jika perlu)
+    // 🔥 PERBAIKAN UTAMA: Format Persentase
     function formatPercent(val) {
       if (val === null || val === undefined) return '0,0%';
       let str = String(val).trim();
       if (str === '') return '0,0%';
-      // Jika sudah mengandung '%', anggap sudah benar, hanya ganti titik desimal ke koma
+      
+      // Jika sudah mengandung '%', pertahankan (hanya ganti titik ke koma)
       if (str.includes('%')) {
         return str.replace('.', ',');
       }
-      // Jika tidak ada '%', coba parse sebagai angka
+      
+      // Coba parse sebagai angka (bisa pakai koma atau titik desimal)
       const num = parseFloat(str.replace(',', '.'));
       if (isNaN(num)) return str;
-      // Jika nilai >= 1, anggap sudah dalam persen (misal 121.3 → 121,3%)
-      if (Math.abs(num) >= 1) {
-        return num.toFixed(1).replace('.', ',') + '%';
-      } else {
-        // Desimal < 1 (misal 0.16 → 16%)
-        return (num * 100).toFixed(1).replace('.', ',') + '%';
-      }
+      
+      // Excel menyimpan persentase sebagai fraksi (0.16 = 16%, 1.213 = 121.3%)
+      // Selalu kalikan 100 untuk mendapatkan nilai persen sebenarnya
+      const percentValue = num * 100;
+      
+      // Format dengan satu desimal, ganti titik ke koma
+      return percentValue.toFixed(1).replace('.', ',') + '%';
     }
 
     // --- Upload file ---
@@ -168,7 +168,6 @@
           return r;
         });
 
-        // Cari tanggal
         let dateStr = '';
         for (let i = 0; i < Math.min(10, data.length); i++) {
           for (let cell of data[i]) {
@@ -198,7 +197,6 @@
           const mainHeader = [...row];
           const catIndex = mainHeader.findIndex(c => getRawValue(c).toUpperCase() === category.toUpperCase());
 
-          // Cari sub-header (KOMITMEN/HASIL/GAP)
           let subHeader = null;
           let subIndex = -1;
           for (let j = i+1; j < i+5 && j < data.length; j++) {
@@ -226,7 +224,6 @@
           const dataColCount = hasSub ? subCols.length : 1;
           const dataStartRow = hasSub ? subIndex + 1 : i + 1;
 
-          // Ambil semua baris sampai baris kosong total
           const rows = [];
           for (let r = dataStartRow; r < dataStartRow + 30 && r < data.length; r++) {
             const dRow = data[r];
@@ -310,13 +307,12 @@
         // TBODY
         const tbody = document.createElement('tbody');
         rows.forEach((row, ri) => {
-          // Deteksi TOTAL (case-insensitive di seluruh baris)
           const isTotal = row.some(cell => getRawValue(cell).toUpperCase().includes('TOTAL'));
           const tr = document.createElement('tr');
           if (isTotal) tr.classList.add('total-row');
 
           if (isTotal) {
-            // Baris TOTAL: merge kolom dari 0 sampai sebelum data, lalu isi "TOTAL" rata kiri
+            // Merge kolom kiri, isi "TOTAL" rata kiri
             const tdTotal = document.createElement('td');
             tdTotal.colSpan = catIndex;
             tdTotal.textContent = 'TOTAL';
@@ -324,7 +320,7 @@
             tdTotal.style.fontWeight = 'bold';
             tr.appendChild(tdTotal);
 
-            // Sel data (Komitmen, Hasil, Gap)
+            // Sel data
             for (let d = 0; d < dataColCount; d++) {
               const td = document.createElement('td');
               let val = getRawValue(row[dataStartCol + d]);
@@ -337,7 +333,7 @@
               tr.appendChild(td);
             }
 
-            // Sel Sukses Rate
+            // Sukses Rate
             const rateIdx = dataStartCol + dataColCount;
             const td = document.createElement('td');
             td.classList.add('rate-cell');
@@ -346,7 +342,7 @@
             td.textContent = formatPercent(rateVal);
             tr.appendChild(td);
           } else {
-            // Baris data biasa
+            // Baris biasa
             for (let col = 0; col < catIndex; col++) {
               const td = document.createElement('td');
               let val = getRawValue(row[col]);
@@ -372,7 +368,6 @@
             td.textContent = formatPercent(rateVal);
             tr.appendChild(td);
           }
-
           tbody.appendChild(tr);
         });
         table.appendChild(tbody);
@@ -383,7 +378,6 @@
       });
     }
 
-    // --- Download satu ---
     window.downloadSingle = async function(index) {
       const card = container.children[index];
       const previewDiv = card?.querySelector('.preview-table');
@@ -406,7 +400,6 @@
       }
     };
 
-    // --- Download semua ---
     window.downloadAllTables = async function() {
       for (let i = 0; i < globalTables.length; i++) {
         statusEl.textContent = `📸 Mendownload ${i+1}/${globalTables.length}...`;
@@ -416,7 +409,6 @@
       statusEl.textContent = `✅ Selesai! ${globalTables.length} gambar diunduh.`;
     };
 
-    // --- Reset ---
     window.resetAll = function() {
       workbook = null;
       globalTables = [];
