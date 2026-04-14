@@ -3,141 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BRI Table Exporter • Stabil & Akurat</title>
+  <title>BRI Table Exporter • Fix Persen & TOTAL</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #0d1b36;
-      padding: 20px;
-      min-height: 100vh;
-      color: #fff;
-    }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #0d1b36; padding: 20px; min-height: 100vh; color: #fff; }
     .container { max-width: 1300px; margin: 0 auto; }
     h1 { font-size: 24px; margin-bottom: 5px; color: #E8821A; }
     .sub { font-size: 14px; opacity: 0.7; margin-bottom: 20px; }
-    .upload-area {
-      border: 2px dashed rgba(255,255,255,0.3);
-      border-radius: 20px;
-      padding: 30px 20px;
-      text-align: center;
-      background: rgba(255,255,255,0.03);
-      margin-bottom: 20px;
-      cursor: pointer;
-    }
+    .upload-area { border: 2px dashed rgba(255,255,255,0.3); border-radius: 20px; padding: 30px 20px; text-align: center; background: rgba(255,255,255,0.03); margin-bottom: 20px; cursor: pointer; }
     .upload-area:hover { background: rgba(255,255,255,0.06); }
     #fileInput { display: none; }
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 15px;
-      margin: 20px 0;
-    }
-    select, button {
-      padding: 10px 18px;
-      border-radius: 30px;
-      border: none;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    select {
-      background: #1e3a5f;
-      color: white;
-      min-width: 200px;
-    }
-    .btn {
-      background: #E8821A;
-      color: white;
-      font-weight: bold;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-    .btn-outline {
-      background: transparent;
-      border: 1px solid #E8821A;
-      color: #E8821A;
-    }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin: 20px 0; }
+    select, button { padding: 10px 18px; border-radius: 30px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; }
+    select { background: #1e3a5f; color: white; min-width: 200px; }
+    .btn { background: #E8821A; color: white; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+    .btn-outline { background: transparent; border: 1px solid #E8821A; color: #E8821A; }
     .btn:disabled { opacity: 0.5; pointer-events: none; }
-    #status {
-      margin: 10px 0;
-      color: #aaccff;
-      min-height: 24px;
-    }
-    .tables-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .table-card {
-      background: rgba(255,255,255,0.05);
-      border-radius: 16px;
-      padding: 16px;
-      border: 1px solid rgba(255,255,255,0.1);
-      flex: 1 1 600px;
-      overflow-x: auto;
-    }
-    .table-title {
-      font-size: 18px;
-      font-weight: bold;
-      color: #E8821A;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .preview-table {
-      background: white;
-      border-radius: 8px;
-      padding: 12px;
-      display: inline-block;
-      min-width: 100%;
-    }
-    table {
-      border-collapse: collapse;
-      font-size: 12px;
-      background: white;
-      width: 100%;
-      border: 1px solid #1B3A6B;
-    }
-    th {
-      background: #1B3A6B;
-      color: white;
-      padding: 8px 5px;
-      text-align: center;
-      border: 1px solid #2a4a7a;
-      white-space: nowrap;
-    }
-    td {
-      padding: 6px 5px;
-      text-align: center;
-      border: 1px solid #b0c4de;
-      white-space: nowrap;
-      color: #1e1e2f;
-    }
-    /* Kolom BRI UNIT (index 2) rata kiri */
+    #status { margin: 10px 0; color: #aaccff; min-height: 24px; }
+    .tables-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+    .table-card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; border: 1px solid rgba(255,255,255,0.1); flex: 1 1 600px; overflow-x: auto; }
+    .table-title { font-size: 18px; font-weight: bold; color: #E8821A; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .preview-table { background: white; border-radius: 8px; padding: 12px; display: inline-block; min-width: 100%; }
+    table { border-collapse: collapse; font-size: 12px; background: white; width: 100%; border: 1px solid #1B3A6B; }
+    th { background: #1B3A6B; color: white; padding: 8px 5px; text-align: center; border: 1px solid #2a4a7a; white-space: nowrap; }
+    td { padding: 6px 5px; text-align: center; border: 1px solid #b0c4de; white-space: nowrap; color: #1e1e2f; }
+    /* Kolom BRI UNIT (indeks 3) rata kiri */
     td:nth-child(3) { text-align: left; }
     th:nth-child(3) { text-align: left; }
     tr:nth-child(even) td { background: #f0f5ff; }
-    .total-row td {
-      background: #1B3A6B !important;
-      color: white !important;
-      font-weight: bold;
-    }
-    .rate-cell {
-      background: #FFF3E0;
-      color: #E8821A;
-      font-weight: bold;
-    }
-    .footer {
-      margin-top: 30px;
-      text-align: center;
-      opacity: 0.5;
-      font-size: 13px;
-    }
+    .total-row td { background: #1B3A6B !important; color: white !important; font-weight: bold; }
+    .rate-cell { background: #FFF3E0; color: #E8821A; font-weight: bold; }
+    .footer { margin-top: 30px; text-align: center; opacity: 0.5; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -164,19 +62,17 @@
   </div>
 
   <div id="tablesContainer" class="tables-grid"></div>
-  <div class="footer">Kolom BRI UNIT rata kiri • Persentase original • TOTAL ditampilkan</div>
+  <div class="footer">Kolom BRI UNIT rata kiri • Persentase otomatis dari desimal • TOTAL muncul</div>
 </div>
 
 <script>
   (function(){
     "use strict";
 
-    // --- GLOBAL ---
     let workbook = null;
-    let currentSheetName = '';
     let globalTables = [];
     let globalDateStr = '';
-    const MAX_COLS = 8; // fokus A-H
+    const MAX_COLS = 8;
     const CATEGORIES = ['Realisasi', 'Recovery DH', 'Kualitas Dpk', 'Kualitas Npl', 'SIMPANAN', 'QRIS'];
 
     const statusEl = document.getElementById('status');
@@ -186,26 +82,23 @@
     const container = document.getElementById('tablesContainer');
     const fileInput = document.getElementById('fileInput');
 
-    // --- Helper: ambil nilai mentah (string) ---
     function getRawValue(val) {
       if (val === null || val === undefined) return '';
       return String(val).trim();
     }
 
-    // --- Format angka biasa (pakai titik ribuan) ---
+    // Format angka biasa (titik ribuan)
     function formatNumber(str) {
       if (!str) return '0';
-      // Jika sudah mengandung titik ribuan atau tanda kurung, biarkan
       if (str.includes('.') && str.length > 3) return str;
       const num = parseFloat(str.replace(/\./g, '').replace(',', '.'));
       if (isNaN(num)) return str;
       return num.toLocaleString('id-ID');
     }
 
-    // --- Format gap (negatif dalam kurung) ---
+    // Format gap (negatif dalam kurung)
     function formatGap(str) {
       if (!str) return '-';
-      // Jika sudah dalam format (123) biarkan
       if (str.startsWith('(') && str.endsWith(')')) return str;
       const num = parseFloat(str.replace(/\./g, '').replace(',', '.'));
       if (isNaN(num)) return str;
@@ -214,7 +107,29 @@
       return num.toLocaleString('id-ID');
     }
 
-    // --- Upload file: baca workbook dan isi dropdown sheet ---
+    // Format persentase: dari desimal (0.7027) jadi 70,3%
+    function formatPercent(val) {
+      if (val === null || val === undefined) return '0,0%';
+      let str = String(val).trim();
+      if (str === '') return '0,0%';
+      // Jika sudah mengandung '%', pertahankan (mungkin sudah diformat)
+      if (str.includes('%')) {
+        // Ganti titik dengan koma jika perlu
+        return str.replace('.', ',');
+      }
+      // Coba parse sebagai angka
+      const num = parseFloat(str.replace(',', '.'));
+      if (isNaN(num)) return str;
+      // Jika nilai absolut >= 1, anggap sudah persen (misal 70.3)
+      if (Math.abs(num) >= 1) {
+        return num.toFixed(1).replace('.', ',') + '%';
+      } else {
+        // Desimal seperti 0.7027 -> kalikan 100
+        return (num * 100).toFixed(1).replace('.', ',') + '%';
+      }
+    }
+
+    // --- Upload file ---
     fileInput.addEventListener('change', async function(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -222,7 +137,6 @@
       try {
         const buf = await file.arrayBuffer();
         workbook = XLSX.read(buf, { type: 'array' });
-        
         sheetSelect.innerHTML = '';
         workbook.SheetNames.forEach((name, idx) => {
           const opt = document.createElement('option');
@@ -231,37 +145,30 @@
           if (idx === 0) opt.selected = true;
           sheetSelect.appendChild(opt);
         });
-        
         sheetSelect.disabled = false;
         loadSheetBtn.disabled = false;
-        currentSheetName = workbook.SheetNames[0];
-        statusEl.textContent = `✅ File berhasil dibaca. ${workbook.SheetNames.length} sheet. Pilih sheet lalu klik "Muat Tabel".`;
+        statusEl.textContent = `✅ File dibaca. ${workbook.SheetNames.length} sheet.`;
       } catch (err) {
         statusEl.textContent = '❌ Gagal membaca file: ' + err.message;
-        console.error(err);
       }
     });
 
-    // --- Load sheet yang dipilih & parsing tabel ---
+    // --- Load sheet & parsing ---
     window.loadSelectedSheet = function() {
       if (!workbook) return;
       const sheetName = sheetSelect.value;
       if (!sheetName) return;
-      currentSheetName = sheetName;
-      
       statusEl.textContent = `🔍 Memproses sheet "${sheetName}"...`;
       try {
         const ws = workbook.Sheets[sheetName];
-        // Ambil data mentah (header:1) sebagai array 2D
         const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-        // Batasi ke 8 kolom pertama
         const data = rawData.map(row => {
           const r = row.slice(0, MAX_COLS);
           while (r.length < MAX_COLS) r.push('');
           return r;
         });
 
-        // Cari tanggal (pola dd/mm/yyyy)
+        // Cari tanggal
         let dateStr = '';
         for (let i = 0; i < Math.min(10, data.length); i++) {
           for (let cell of data[i]) {
@@ -271,17 +178,14 @@
         }
         globalDateStr = dateStr;
 
-        // --- Parsing tabel: mulai dari baris dengan "NO" di kolom pertama ---
         const tables = [];
         let i = 0;
         while (i < data.length) {
           const row = data[i];
           if (!row || row.every(c => c === '')) { i++; continue; }
-          
           const firstCell = getRawValue(row[0]).toUpperCase();
           if (firstCell !== 'NO' && firstCell !== 'NO.') { i++; continue; }
 
-          // Cari kategori di baris ini
           let category = null;
           for (let cat of CATEGORIES) {
             if (row.some(c => getRawValue(c).toUpperCase() === cat.toUpperCase())) {
@@ -294,7 +198,7 @@
           const mainHeader = [...row];
           const catIndex = mainHeader.findIndex(c => getRawValue(c).toUpperCase() === category.toUpperCase());
 
-          // Cari sub-header (mengandung KOMITMEN/HASIL/GAP)
+          // Cari sub-header (KOMITMEN/HASIL/GAP)
           let subHeader = null;
           let subIndex = -1;
           for (let j = i+1; j < i+5 && j < data.length; j++) {
@@ -312,7 +216,7 @@
             for (let col = catIndex; col < subHeader.length; col++) {
               const val = getRawValue(subHeader[col]).toUpperCase();
               if (['KOMITMEN', 'HASIL', 'GAP', 'REALISASI'].includes(val)) {
-                subCols.push({ label: subHeader[col], colIndex: col }); // simpan teks asli
+                subCols.push({ label: subHeader[col], colIndex: col });
               } else if (val === '' && subCols.length > 0) break;
             }
           }
@@ -322,17 +226,13 @@
           const dataColCount = hasSub ? subCols.length : 1;
           const dataStartRow = hasSub ? subIndex + 1 : i + 1;
 
-          // Ambil baris data: kolom pertama harus angka atau mengandung TOTAL
+          // Ambil semua baris sampai baris kosong total (atau sampai 30 baris)
           const rows = [];
           for (let r = dataStartRow; r < dataStartRow + 30 && r < data.length; r++) {
             const dRow = data[r];
-            const firstDataCol = getRawValue(dRow[0]);
             if (dRow.every(c => c === '')) break;
-            
-            if (/^\d+$/.test(firstDataCol) || firstDataCol.toUpperCase().includes('TOTAL')) {
-              rows.push([...dRow]);
-              if (firstDataCol.toUpperCase().includes('TOTAL')) break;
-            }
+            rows.push([...dRow]);
+            // Tidak berhenti meski ketemu TOTAL, kita akan deteksi saat render
           }
 
           if (rows.length > 0) {
@@ -343,7 +243,7 @@
 
         globalTables = tables;
         renderTables();
-        statusEl.textContent = `✅ ${tables.length} tabel ditemukan di sheet "${sheetName}". ${dateStr}`;
+        statusEl.textContent = `✅ ${tables.length} tabel ditemukan. ${dateStr}`;
         downloadAllBtn.disabled = tables.length === 0;
       } catch (err) {
         statusEl.textContent = '❌ Error: ' + err.message;
@@ -351,11 +251,11 @@
       }
     };
 
-    // --- Render tabel ke HTML ---
+    // --- Render tabel ---
     function renderTables() {
       container.innerHTML = '';
       if (globalTables.length === 0) {
-        container.innerHTML = '<div style="color:#aaa; padding:20px;">Tidak ada tabel terdeteksi.</div>';
+        container.innerHTML = '<div style="color:#aaa; padding:20px;">Tidak ada tabel.</div>';
         return;
       }
 
@@ -365,7 +265,6 @@
 
         const card = document.createElement('div');
         card.className = 'table-card';
-        
         const titleDiv = document.createElement('div');
         titleDiv.className = 'table-title';
         titleDiv.innerHTML = `${idx+1}. ${category} <button class="btn" style="padding:6px 14px;font-size:13px;" onclick="downloadSingle(${idx})">⬇ PNG</button>`;
@@ -374,11 +273,10 @@
         const previewDiv = document.createElement('div');
         previewDiv.className = 'preview-table';
         const table = document.createElement('table');
-        
+
         // THEAD
         const thead = document.createElement('thead');
         const tr1 = document.createElement('tr');
-        
         for (let col = 0; col < mainHeader.length; col++) {
           if (col === catIndex) {
             const th = document.createElement('th');
@@ -413,7 +311,8 @@
         // TBODY
         const tbody = document.createElement('tbody');
         rows.forEach((row, ri) => {
-          const isTotal = getRawValue(row[0]).toUpperCase().includes('TOTAL');
+          // Deteksi apakah ini baris TOTAL (cari kata TOTAL di seluruh baris, case-insensitive)
+          const isTotal = row.some(cell => getRawValue(cell).toUpperCase().includes('TOTAL'));
           const tr = document.createElement('tr');
           if (isTotal) tr.classList.add('total-row');
 
@@ -432,7 +331,6 @@
             let val = getRawValue(row[dataStartCol + d]);
             if (val === '') val = (d === dataColCount-1) ? '-' : '0';
             if (d === dataColCount - 1) {
-              // Gap
               td.textContent = formatGap(val);
             } else {
               td.textContent = formatNumber(val);
@@ -440,26 +338,27 @@
             tr.appendChild(td);
           }
 
-          // Sel Sukses Rate (original string)
+          // Sel Sukses Rate
           const rateIdx = dataStartCol + dataColCount;
           const td = document.createElement('td');
           td.classList.add('rate-cell');
           let rateVal = (rateIdx < row.length) ? getRawValue(row[rateIdx]) : '';
           if (rateVal === '') rateVal = '0,0%';
-          td.textContent = rateVal;
+          // Format persentase dari desimal jika perlu
+          td.textContent = formatPercent(rateVal);
           tr.appendChild(td);
 
           tbody.appendChild(tr);
         });
         table.appendChild(tbody);
-        
+
         previewDiv.appendChild(table);
         card.appendChild(previewDiv);
         container.appendChild(card);
       });
     }
 
-    // --- Download satu tabel ---
+    // --- Download satu ---
     window.downloadSingle = async function(index) {
       const card = container.children[index];
       const previewDiv = card?.querySelector('.preview-table');
