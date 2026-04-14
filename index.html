@@ -2,8 +2,8 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>BRI Table Exporter • Stabil</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRI Table Exporter • Stabil v2</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
@@ -15,20 +15,9 @@
       min-height: 100vh;
       color: #fff;
     }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    h1 {
-      font-size: 22px;
-      margin-bottom: 8px;
-      color: #E8821A;
-    }
-    .sub {
-      font-size: 14px;
-      opacity: 0.7;
-      margin-bottom: 24px;
-    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { font-size: 22px; margin-bottom: 8px; color: #E8821A; }
+    .sub { font-size: 14px; opacity: 0.7; margin-bottom: 24px; }
     .upload-area {
       border: 2px dashed rgba(255,255,255,0.3);
       border-radius: 20px;
@@ -52,10 +41,7 @@
       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
       margin: 5px;
     }
-    .btn:disabled {
-      opacity: 0.5;
-      pointer-events: none;
-    }
+    .btn:disabled { opacity: 0.5; pointer-events: none; }
     .btn-outline {
       background: transparent;
       border: 1px solid #E8821A;
@@ -66,6 +52,21 @@
       margin: 16px 0;
       color: #aaccff;
       font-weight: 500;
+    }
+    .sheet-selector {
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    select {
+      padding: 10px 16px;
+      border-radius: 30px;
+      border: none;
+      background: white;
+      font-size: 14px;
+      min-width: 200px;
     }
     .tables-grid {
       display: flex;
@@ -132,14 +133,22 @@
 <body>
 <div class="container">
   <h1>📊 BRI Table Exporter</h1>
-  <div class="sub">Upload Excel → 6 Tabel → Download PNG</div>
+  <div class="sub">Upload Excel → Pilih Sheet → 6 Tabel PNG</div>
 
-  <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+  <div class="upload-area" id="dropZone">
     <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
-    <div style="font-weight: 600; margin-bottom: 5px;">Klik untuk Pilih File Excel</div>
-    <div style="font-size: 13px; opacity: 0.6;">.xlsx atau .xls</div>
+    <div style="font-weight: 600; margin-bottom: 5px;">Klik atau Drop File Excel</div>
+    <div style="font-size: 13px; opacity: 0.6;">.xlsx / .xls</div>
   </div>
   <input type="file" id="fileInput" accept=".xlsx, .xls">
+
+  <div id="sheetSelectorContainer" style="display:none;">
+    <div class="sheet-selector">
+      <span>📑 Pilih Sheet:</span>
+      <select id="sheetSelect"></select>
+      <button class="btn btn-outline" id="loadSheetBtn">Muat Tabel</button>
+    </div>
+  </div>
 
   <div id="status"></div>
 
@@ -153,18 +162,24 @@
 </div>
 
 <script>
-  // --- GLOBAL VARIABLES ---
-  let globalTables = [];       // array of { category, element, title }
+  // --- GLOBAL STATE ---
+  let workbook = null;
+  let currentSheetName = null;
+  let globalTables = [];
   let globalDateStr = '';
-  const MAX_COLS = 8;          // fokus hanya kolom A-H
+  const MAX_COLS = 8;
   const CATEGORIES = ["Realisasi", "Recovery DH", "Kualitas Dpk", "Kualitas Npl", "SIMPANAN", "QRIS"];
 
   const statusEl = document.getElementById('status');
   const container = document.getElementById('tablesContainer');
   const downloadAllBtn = document.getElementById('downloadAllBtn');
   const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const sheetSelectorDiv = document.getElementById('sheetSelectorContainer');
+  const sheetSelect = document.getElementById('sheetSelect');
+  const loadSheetBtn = document.getElementById('loadSheetBtn');
 
-  // --- Helper: format number Indonesia ---
+  // --- Format helpers ---
   function fmtNumber(v) {
     if (v === '' || v === null || v === undefined) return '';
     let num = Number(v);
@@ -192,15 +207,11 @@
     return s;
   }
 
-  // --- PARSING EXCEL (fokus A-H, deteksi header dinamis) ---
-  function parseExcel(arrayBuffer) {
-    const wb = XLSX.read(arrayBuffer, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-    // Potong hanya 8 kolom pertama
+  // --- Parse sheet data (sama seperti sebelumnya) ---
+  function parseSheetData(sheet) {
+    const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     const data = rawData.map(row => row.slice(0, MAX_COLS));
 
-    // Cari tanggal
     let dateStr = '';
     for (let i = 0; i < Math.min(6, data.length); i++) {
       for (let cell of data[i]) {
@@ -215,11 +226,9 @@
       const row = data[i];
       if (!row || row.length === 0) { i++; continue; }
 
-      // Deteksi header: kolom pertama harus "NO"
       const firstCell = String(row[0] || '').trim().toUpperCase();
       if (firstCell !== 'NO' && firstCell !== 'NO.') { i++; continue; }
 
-      // Cari kategori di baris ini
       let category = null;
       for (let cat of CATEGORIES) {
         if (row.some(c => String(c).trim().toUpperCase() === cat.toUpperCase())) {
@@ -232,7 +241,6 @@
       const mainHeader = row;
       const catIndex = mainHeader.findIndex(c => String(c).trim().toUpperCase() === category.toUpperCase());
 
-      // Cari sub-header (baris dengan "Komitmen"/"Hasil"/"Gap")
       let subHeader = null;
       let subIndex = -1;
       for (let j = i+1; j < i+4 && j < data.length; j++) {
@@ -245,7 +253,6 @@
         }
       }
 
-      // Tentukan sub-kolom
       let subCols = [];
       if (subHeader) {
         for (let col = catIndex; col < subHeader.length; col++) {
@@ -261,7 +268,6 @@
       const dataColCount = hasSub ? subCols.length : 1;
       const dataStartRow = hasSub ? subIndex + 1 : i + 1;
 
-      // Kumpulkan baris data
       const rows = [];
       for (let r = dataStartRow; r < dataStartRow + 20 && r < data.length; r++) {
         const dRow = data[r];
@@ -287,7 +293,7 @@
     return { dateStr, tables };
   }
 
-  // --- RENDER TABEL KE HTML ---
+  // --- Render ke HTML ---
   function renderTables(parsed) {
     globalDateStr = parsed.dateStr;
     globalTables = [];
@@ -297,7 +303,6 @@
       const { category, mainHeader, subCols, catIndex, dataStartCol, dataColCount, rows } = t;
       const hasSub = subCols.length > 0;
 
-      // Buat wrapper
       const card = document.createElement('div');
       card.className = 'table-card';
       
@@ -309,13 +314,9 @@
       const previewDiv = document.createElement('div');
       previewDiv.className = 'preview-table';
       
-      // Buat tabel
       const table = document.createElement('table');
-      
-      // THEAD
       const thead = document.createElement('thead');
       
-      // Baris header utama
       const tr1 = document.createElement('tr');
       for (let col = 0; col < mainHeader.length; col++) {
         if (col === catIndex) {
@@ -325,21 +326,18 @@
           th.textContent = category;
           tr1.appendChild(th);
         } else if (col > catIndex && col < catIndex + dataColCount) {
-          // dilewati
+          // skip
         } else {
           const th = document.createElement('th');
           th.textContent = mainHeader[col] || '';
-          th.style.whiteSpace = 'nowrap';
           tr1.appendChild(th);
         }
       }
-      // Rowspan untuk header utama jika ada sub
       if (hasSub) {
         tr1.querySelectorAll('th').forEach(th => { if (th.colSpan !== dataColCount) th.rowSpan = 2; });
       }
       thead.appendChild(tr1);
 
-      // Baris sub-header jika ada
       if (hasSub) {
         const tr2 = document.createElement('tr');
         subCols.forEach(sc => {
@@ -352,24 +350,21 @@
 
       table.appendChild(thead);
 
-      // TBODY
       const tbody = document.createElement('tbody');
       rows.forEach((row, ri) => {
         const isTotal = String(row[0] || '').toUpperCase().includes('TOTAL');
         const tr = document.createElement('tr');
         if (isTotal) tr.classList.add('total-row');
 
-        // Sel kiri (sebelum kategori)
         for (let col = 0; col < catIndex; col++) {
           const td = document.createElement('td');
           let val = row[col] || '';
-          if (col === 3) td.style.textAlign = 'center'; // Σ MANTRI
+          if (col === 3) td.style.textAlign = 'center';
           td.textContent = val;
           if (isTotal) { td.style.color = 'white'; td.style.fontWeight = 'bold'; }
           tr.appendChild(td);
         }
 
-        // Sel data
         for (let d = 0; d < dataColCount; d++) {
           const td = document.createElement('td');
           let val = row[dataStartCol + d] || '';
@@ -383,7 +378,6 @@
           tr.appendChild(td);
         }
 
-        // Sel sukses rate (setelah data)
         const rateIdx = dataStartCol + dataColCount;
         if (rateIdx < row.length) {
           const td = document.createElement('td');
@@ -402,7 +396,6 @@
       card.appendChild(previewDiv);
       container.appendChild(card);
 
-      // Simpan referensi untuk screenshot
       globalTables.push({
         category,
         element: previewDiv,
@@ -414,29 +407,86 @@
     statusEl.textContent = `✅ ${globalTables.length} tabel ditemukan. ${globalDateStr}`;
   }
 
-  // --- HANDLE UPLOAD ---
-  fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
+  // --- Proses file yang diupload ---
+  function handleFile(file) {
     if (!file) return;
     statusEl.textContent = '⏳ Membaca file...';
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        workbook = XLSX.read(data, { type: 'array' });
+        
+        // Populate sheet selector
+        sheetSelect.innerHTML = '';
+        workbook.SheetNames.forEach((name, i) => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          if (i === 0) opt.selected = true;
+          sheetSelect.appendChild(opt);
+        });
+        sheetSelectorDiv.style.display = 'block';
+        currentSheetName = workbook.SheetNames[0];
+        statusEl.textContent = `📂 File berhasil dibaca. ${workbook.SheetNames.length} sheet. Pilih sheet lalu klik "Muat Tabel".`;
+      } catch (err) {
+        statusEl.textContent = '❌ Gagal membaca file: ' + err.message;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // --- Load sheet yang dipilih ---
+  function loadSelectedSheet() {
+    if (!workbook) return;
+    const sheetName = sheetSelect.value;
+    if (!sheetName) return;
+    statusEl.textContent = `⏳ Memproses sheet "${sheetName}"...`;
     try {
-      const buf = await file.arrayBuffer();
-      const parsed = parseExcel(buf);
+      const sheet = workbook.Sheets[sheetName];
+      const parsed = parseSheetData(sheet);
       renderTables(parsed);
     } catch (err) {
-      statusEl.textContent = '❌ Error: ' + err.message;
-      console.error(err);
+      statusEl.textContent = '❌ Gagal memproses sheet: ' + err.message;
     }
-  });
+  }
 
-  // --- DOWNLOAD SATU TABEL ---
+  // --- Event listeners untuk upload ---
+  function setupUpload() {
+    // Klik pada drop zone
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    // File input change
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    // Drag & drop
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.background = 'rgba(232,130,26,0.1)';
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.background = 'rgba(255,255,255,0.03)';
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.style.background = 'rgba(255,255,255,0.03)';
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    loadSheetBtn.addEventListener('click', loadSelectedSheet);
+  }
+
+  // --- Download functions (global) ---
   async function downloadSingle(index) {
     const item = globalTables[index];
     if (!item) return;
     const el = item.element;
     try {
-      // Pastikan terlihat
-      el.style.visibility = 'visible';
       const canvas = await html2canvas(el, {
         scale: 2.5,
         backgroundColor: '#ffffff',
@@ -453,7 +503,6 @@
     }
   }
 
-  // --- DOWNLOAD SEMUA ---
   async function downloadAllTables() {
     for (let i = 0; i < globalTables.length; i++) {
       statusEl.textContent = `📸 Mendownload ${i+1}/${globalTables.length}...`;
@@ -464,17 +513,23 @@
   }
 
   function resetAll() {
+    workbook = null;
     globalTables = [];
     container.innerHTML = '';
     downloadAllBtn.disabled = true;
     statusEl.textContent = '';
     fileInput.value = '';
+    sheetSelectorDiv.style.display = 'none';
+    sheetSelect.innerHTML = '';
   }
 
-  // Expose ke global
+  // Expose to global
   window.downloadSingle = downloadSingle;
   window.downloadAllTables = downloadAllTables;
   window.resetAll = resetAll;
+
+  // Initialize
+  setupUpload();
 </script>
 </body>
 </html>
