@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BRI Table Exporter • Fokus A-H</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <title>BRI Table Exporter • Fokus A-H (Fixed)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,7 +22,6 @@
     const BRI_ORANGE = "#E8821A";
     const BRI_LIGHT = "#EEF3FA";
 
-    // Kategori yang dicari (case-insensitive) – akan dicocokkan dengan isi header
     const CATEGORIES = [
       "Realisasi",
       "Recovery DH",
@@ -32,120 +31,122 @@
       "QRIS",
     ];
 
+    // Load html2canvas secara dinamis
     function loadHtml2Canvas() {
-      return new Promise((resolve) => {
-        if (window.html2canvas) { resolve(window.html2canvas); return; }
-        const s = document.createElement("script");
-        s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-        s.onload = () => resolve(window.html2canvas);
-        document.head.appendChild(s);
+      return new Promise((resolve, reject) => {
+        if (window.html2canvas) return resolve(window.html2canvas);
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        script.onload = () => resolve(window.html2canvas);
+        script.onerror = reject;
+        document.head.appendChild(script);
       });
     }
 
-    // Batasi hanya kolom A-H (8 kolom)
     const MAX_COLS = 8;
 
     function parseExcelFile(arrayBuffer) {
-      const wb = XLSX.read(arrayBuffer, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      // Baca semua data, batasi ke 8 kolom pertama
-      const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-      const data = rawData.map(row => row.slice(0, MAX_COLS));
+      try {
+        const wb = XLSX.read(arrayBuffer, { type: "array" });
+        const firstSheet = wb.SheetNames[0];
+        const ws = wb.Sheets[firstSheet];
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        // Batasi 8 kolom pertama
+        const data = rawData.map(row => row.slice(0, MAX_COLS));
 
-      let dateStr = "";
-      for (let i = 0; i < Math.min(6, data.length); i++) {
-        for (const cell of data[i]) {
-          const s = String(cell);
-          if (s.match(/\d{2}\/\d{2}\/\d{4}/)) { dateStr = s; break; }
-        }
-      }
-
-      const tables = [];
-      let i = 0;
-      while (i < data.length) {
-        const row = data[i];
-        if (!row || row.length === 0) { i++; continue; }
-
-        // Cek apakah baris ini adalah header tabel (kolom pertama "NO")
-        const firstCell = String(row[0] || "").trim().toUpperCase();
-        if (firstCell !== "NO" && firstCell !== "NO.") { i++; continue; }
-
-        // Cari kategori di baris ini (biasanya di kolom ke-5, index 4)
-        let foundCategory = null;
-        for (const cat of CATEGORIES) {
-          if (row.some(c => String(c).trim().toUpperCase() === cat.toUpperCase())) {
-            foundCategory = cat;
-            break;
-          }
-        }
-        if (!foundCategory) { i++; continue; }
-
-        const mainHeaderRow = row;
-        const categoryColIndex = mainHeaderRow.findIndex(c => String(c).trim().toUpperCase() === foundCategory.toUpperCase());
-
-        // Cari baris sub-header (mengandung "Komitmen", "Hasil", "Gap")
-        let subHeaderRow = null;
-        let subHeaderIndex = -1;
-        for (let j = i+1; j < i+4 && j < data.length; j++) {
-          const candidate = data[j];
-          const candidateStr = candidate.map(c => String(c).toUpperCase()).join(" ");
-          if (candidateStr.includes("KOMITMEN") || candidateStr.includes("HASIL") || candidateStr.includes("GAP")) {
-            subHeaderRow = candidate;
-            subHeaderIndex = j;
-            break;
+        // Cari tanggal
+        let dateStr = "";
+        for (let i = 0; i < Math.min(6, data.length); i++) {
+          for (const cell of data[i]) {
+            const s = String(cell);
+            if (s.match(/\d{2}\/\d{2}\/\d{4}/)) { dateStr = s; break; }
           }
         }
 
-        // Tentukan sub-kolom
-        let subCols = [];
-        if (subHeaderRow) {
-          for (let col = categoryColIndex; col < subHeaderRow.length; col++) {
-            const val = String(subHeaderRow[col] || "").trim().toUpperCase();
-            if (["KOMITMEN", "HASIL", "GAP", "REALISASI"].includes(val)) {
-              subCols.push({ label: val, colIndex: col });
-            } else if (val === "" && subCols.length > 0) {
+        const tables = [];
+        let i = 0;
+        while (i < data.length) {
+          const row = data[i];
+          if (!row || row.length === 0) { i++; continue; }
+
+          const firstCell = String(row[0] || "").trim().toUpperCase();
+          if (firstCell !== "NO" && firstCell !== "NO.") { i++; continue; }
+
+          // Cari kategori
+          let foundCategory = null;
+          for (const cat of CATEGORIES) {
+            if (row.some(c => String(c).trim().toUpperCase() === cat.toUpperCase())) {
+              foundCategory = cat;
               break;
             }
           }
-        }
+          if (!foundCategory) { i++; continue; }
 
-        const hasSub = subCols.length > 0;
-        const dataColStart = hasSub ? subCols[0].colIndex : categoryColIndex;
-        const dataColCount = hasSub ? subCols.length : 1;
-        const dataStartRow = hasSub ? subHeaderIndex + 1 : i + 1;
+          const mainHeaderRow = row;
+          const categoryColIndex = mainHeaderRow.findIndex(c => String(c).trim().toUpperCase() === foundCategory.toUpperCase());
 
-        // Kumpulkan baris data
-        const rows = [];
-        for (let r = dataStartRow; r < dataStartRow + 15 && r < data.length; r++) {
-          const dataRow = data[r];
-          if (dataRow.every(c => c === "" || c === null || c === undefined)) break;
-          // Jika baris mengandung "TOTAL" di kolom pertama
-          if (String(dataRow[0] || "").toUpperCase().includes("TOTAL")) {
-            rows.push(dataRow);
-            break;
+          // Cari sub-header
+          let subHeaderRow = null;
+          let subHeaderIndex = -1;
+          for (let j = i+1; j < i+4 && j < data.length; j++) {
+            const candidate = data[j];
+            const candidateStr = candidate.map(c => String(c).toUpperCase()).join(" ");
+            if (candidateStr.includes("KOMITMEN") || candidateStr.includes("HASIL") || candidateStr.includes("GAP")) {
+              subHeaderRow = candidate;
+              subHeaderIndex = j;
+              break;
+            }
           }
-          rows.push(dataRow);
+
+          let subCols = [];
+          if (subHeaderRow) {
+            for (let col = categoryColIndex; col < subHeaderRow.length; col++) {
+              const val = String(subHeaderRow[col] || "").trim().toUpperCase();
+              if (["KOMITMEN", "HASIL", "GAP", "REALISASI"].includes(val)) {
+                subCols.push({ label: val, colIndex: col });
+              } else if (val === "" && subCols.length > 0) {
+                break;
+              }
+            }
+          }
+
+          const hasSub = subCols.length > 0;
+          const dataColStart = hasSub ? subCols[0].colIndex : categoryColIndex;
+          const dataColCount = hasSub ? subCols.length : 1;
+          const dataStartRow = hasSub ? subHeaderIndex + 1 : i + 1;
+
+          const rows = [];
+          for (let r = dataStartRow; r < dataStartRow + 15 && r < data.length; r++) {
+            const dataRow = data[r];
+            if (dataRow.every(c => c === "" || c === null || c === undefined)) break;
+            if (String(dataRow[0] || "").toUpperCase().includes("TOTAL")) {
+              rows.push(dataRow);
+              break;
+            }
+            rows.push(dataRow);
+          }
+
+          tables.push({
+            category: foundCategory,
+            mainHeaderRow,
+            subHeaderRow,
+            subCols,
+            categoryColIndex,
+            dataColStart,
+            dataColCount,
+            rows,
+          });
+
+          i = dataStartRow + rows.length;
         }
 
-        tables.push({
-          category: foundCategory,
-          mainHeaderRow,
-          subHeaderRow,
-          subCols,
-          categoryColIndex,
-          dataColStart,
-          dataColCount,
-          rows,
-        });
-
-        // Lompat ke setelah blok ini
-        i = dataStartRow + rows.length;
+        return { dateStr, tables };
+      } catch (e) {
+        console.error("Parse error:", e);
+        throw e;
       }
-
-      return { dateStr, tables };
     }
 
-    // Formatter
     function fmt(v) {
       if (v === "" || v === null || v === undefined) return "";
       const n = Number(v);
@@ -173,7 +174,7 @@
       return s;
     }
 
-    function TableCard({ data, dateStr }) {
+    const TableCard = ({ data, dateStr }) => {
       const { category, mainHeaderRow, subHeaderRow, subCols, categoryColIndex, dataColStart, dataColCount, rows } = data;
       const hasSub = subCols.length > 0;
       
@@ -188,7 +189,6 @@
         textAlign: align, fontSize: 11, whiteSpace: "nowrap",
       });
 
-      // Kolom BRI UNIT (index 2) dan Σ MANTRI (index 3) perlu penanganan khusus
       const briUnitIndex = 2;
       const mantriIndex = 3;
 
@@ -281,183 +281,191 @@
           </table>
         </div>
       );
-    }
+    };
 
-    function App() {
-      const [tables, setTables] = React.useState([]);
-      const [dateStr, setDateStr] = React.useState("");
-      const [loading, setLoading] = React.useState(false);
-      const [capturing, setCapturing] = React.useState(null);
-      const [dragging, setDragging] = React.useState(false);
-      const [progress, setProgress] = React.useState("");
-      const tableRefs = React.useRef({});
-      const fileInputRef = React.useRef(null);
+    class App extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = {
+          tables: [],
+          dateStr: "",
+          loading: false,
+          capturing: null,
+          dragging: false,
+          progress: "",
+        };
+        this.tableRefs = {};
+        this.fileInputRef = React.createRef();
+      }
 
-      const handleFile = React.useCallback(async (file) => {
+      handleFile = async (file) => {
         if (!file) return;
-        setLoading(true);
-        setProgress("Membaca file...");
+        this.setState({ loading: true, progress: "Membaca file..." });
         try {
           const buf = await file.arrayBuffer();
           const result = parseExcelFile(buf);
-          setDateStr(result.dateStr || "");
-          setTables(result.tables);
-          setProgress(`${result.tables.length} tabel ditemukan`);
+          this.setState({
+            dateStr: result.dateStr || "",
+            tables: result.tables,
+            progress: `${result.tables.length} tabel ditemukan`,
+            loading: false,
+          });
         } catch (e) {
           alert("Gagal membaca file: " + e.message);
-          setProgress("");
+          this.setState({ loading: false, progress: "" });
         }
-        setLoading(false);
-      }, []);
+      };
 
-      const downloadOne = async (idx) => {
-        const el = tableRefs.current[idx];
+      downloadOne = async (idx) => {
+        const el = this.tableRefs[idx];
         if (!el) return;
-        setCapturing(idx);
+        this.setState({ capturing: idx });
         try {
-          // Pastikan elemen terlihat dan memiliki ukuran
           el.style.visibility = "visible";
           el.style.display = "inline-block";
-          
-          // Tunggu sebentar agar render sempurna
           await new Promise(r => setTimeout(r, 100));
           
           const h2c = await loadHtml2Canvas();
-          const canvas = await h2c(el, { 
-            scale: 2.5, 
-            backgroundColor: "#ffffff", 
-            logging: false, 
+          const canvas = await h2c(el, {
+            scale: 2.5,
+            backgroundColor: "#ffffff",
+            logging: false,
             useCORS: true,
             allowTaint: false,
             windowWidth: el.scrollWidth,
             windowHeight: el.scrollHeight
           });
           const a = document.createElement("a");
-          const catName = tables[idx]?.category?.replace(/ /g, "_") || `tabel_${idx+1}`;
-          a.download = `${catName}_${(dateStr || "posisi").replace(/\//g, "-")}.png`;
+          const catName = this.state.tables[idx]?.category?.replace(/ /g, "_") || `tabel_${idx+1}`;
+          a.download = `${catName}_${(this.state.dateStr || "posisi").replace(/\//g, "-")}.png`;
           a.href = canvas.toDataURL("image/png");
           a.click();
         } catch (e) {
           alert("Error: " + e.message);
         }
-        setCapturing(null);
+        this.setState({ capturing: null });
       };
 
-      const downloadAll = async () => {
-        for (let i = 0; i < tables.length; i++) {
-          setProgress(`Downloading ${i+1}/${tables.length}...`);
-          await downloadOne(i);
+      downloadAll = async () => {
+        for (let i = 0; i < this.state.tables.length; i++) {
+          this.setState({ progress: `Downloading ${i+1}/${this.state.tables.length}...` });
+          await this.downloadOne(i);
           await new Promise(r => setTimeout(r, 300));
         }
-        setProgress("✅ Semua selesai didownload!");
-        setTimeout(() => setProgress(""), 3000);
+        this.setState({ progress: "✅ Semua selesai didownload!" });
+        setTimeout(() => this.setState({ progress: "" }), 3000);
       };
 
-      const reset = () => { setTables([]); setDateStr(""); setProgress(""); };
-
-      const s = {
-        wrap: { minHeight: "100vh", background: `linear-gradient(145deg, #0d1b36 0%, #1a2f5a 100%)`, padding: "20px 14px", fontFamily: "'Segoe UI', Arial, sans-serif" },
-        header: { textAlign: "center", marginBottom: 24 },
-        logo: { display: "inline-flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: "12px 22px", border: `1px solid ${BRI_ORANGE}55` },
-        logoTitle: { color: BRI_ORANGE, fontWeight: 800, fontSize: 17, letterSpacing: 1.5 },
-        logoSub: { color: "rgba(255,255,255,0.45)", fontSize: 11, marginTop: 2 },
-        dropzone: (drag) => ({ border: `2px dashed ${drag ? BRI_ORANGE : "rgba(255,255,255,0.18)"}`, borderRadius: 16, padding: "44px 24px", textAlign: "center", cursor: "pointer", background: drag ? "rgba(232,130,26,0.07)" : "rgba(255,255,255,0.02)", transition: "all 0.2s", maxWidth: 480, margin: "0 auto" }),
-        dropIcon: { fontSize: 48, marginBottom: 12 },
-        dropTitle: { color: "#fff", fontWeight: 600, fontSize: 16, marginBottom: 6 },
-        dropSub: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
-        bar: { display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 940, margin: "0 auto 16px", flexWrap: "wrap", gap: 8 },
-        info: { color: "rgba(255,255,255,0.55)", fontSize: 13 },
-        btnOrange: { padding: "8px 18px", background: BRI_ORANGE, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700 },
-        btnGhost: { padding: "7px 14px", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, cursor: "pointer", fontSize: 12 },
-        grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(600px, 1fr))", gap: 18, maxWidth: 1280, margin: "0 auto" },
-        card: { background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.08)", overflow: "auto" },
-        cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-        catLabel: { color: BRI_ORANGE, fontWeight: 700, fontSize: 14 },
-        btnBlue: (disabled) => ({ padding: "6px 14px", background: disabled ? "#445" : BRI_BLUE, color: "#fff", border: "none", borderRadius: 7, cursor: disabled ? "default" : "pointer", fontSize: 12, fontWeight: 600 }),
-        progress: { textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 12 },
+      reset = () => {
+        this.setState({ tables: [], dateStr: "", progress: "" });
       };
 
-      return (
-        <div style={s.wrap}>
-          <div style={s.header}>
-            <div style={s.logo}>
-              <span style={{ fontSize: 26 }}>📊</span>
-              <div>
-                <div style={s.logoTitle}>BRI TABLE EXPORTER</div>
-                <div style={s.logoSub}>Upload Excel → Fokus Kolom A-H → PNG</div>
-              </div>
-            </div>
-          </div>
+      render() {
+        const { tables, dateStr, loading, capturing, dragging, progress } = this.state;
+        const s = {
+          wrap: { minHeight: "100vh", background: `linear-gradient(145deg, #0d1b36 0%, #1a2f5a 100%)`, padding: "20px 14px", fontFamily: "'Segoe UI', Arial, sans-serif" },
+          header: { textAlign: "center", marginBottom: 24 },
+          logo: { display: "inline-flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: "12px 22px", border: `1px solid ${BRI_ORANGE}55` },
+          logoTitle: { color: BRI_ORANGE, fontWeight: 800, fontSize: 17, letterSpacing: 1.5 },
+          logoSub: { color: "rgba(255,255,255,0.45)", fontSize: 11, marginTop: 2 },
+          dropzone: (drag) => ({ border: `2px dashed ${drag ? BRI_ORANGE : "rgba(255,255,255,0.18)"}`, borderRadius: 16, padding: "44px 24px", textAlign: "center", cursor: "pointer", background: drag ? "rgba(232,130,26,0.07)" : "rgba(255,255,255,0.02)", transition: "all 0.2s", maxWidth: 480, margin: "0 auto" }),
+          dropIcon: { fontSize: 48, marginBottom: 12 },
+          dropTitle: { color: "#fff", fontWeight: 600, fontSize: 16, marginBottom: 6 },
+          dropSub: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
+          bar: { display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 940, margin: "0 auto 16px", flexWrap: "wrap", gap: 8 },
+          info: { color: "rgba(255,255,255,0.55)", fontSize: 13 },
+          btnOrange: { padding: "8px 18px", background: BRI_ORANGE, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 700 },
+          btnGhost: { padding: "7px 14px", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, cursor: "pointer", fontSize: 12 },
+          grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(600px, 1fr))", gap: 18, maxWidth: 1280, margin: "0 auto" },
+          card: { background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,0.08)", overflow: "auto" },
+          cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+          catLabel: { color: BRI_ORANGE, fontWeight: 700, fontSize: 14 },
+          btnBlue: (disabled) => ({ padding: "6px 14px", background: disabled ? "#445" : BRI_BLUE, color: "#fff", border: "none", borderRadius: 7, cursor: disabled ? "default" : "pointer", fontSize: 12, fontWeight: 600 }),
+          progress: { textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 12 },
+        };
 
-          {tables.length === 0 && (
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }}
-              onClick={() => fileInputRef.current?.click()}
-              style={s.dropzone(dragging)}
-            >
-              <div style={s.dropIcon}>{loading ? "⏳" : "📁"}</div>
-              <div style={s.dropTitle}>{loading ? "Memproses file..." : "Upload File Excel (.xlsx / .xls)"}</div>
-              {!loading && (
-                <>
-                  <div style={s.dropSub}>Klik atau drag & drop file Excel</div>
-                  <div style={{ marginTop: 16, display: "inline-block", padding: "8px 22px", background: BRI_ORANGE, color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: 13 }}>
-                    Pilih File
-                  </div>
-                </>
-              )}
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
-                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-            </div>
-          )}
-
-          {tables.length > 0 && (
-            <>
-              <div style={s.bar}>
-                <div style={s.info}>
-                  ✅ <strong style={{ color: BRI_ORANGE }}>{tables.length} tabel</strong> ditemukan
-                  {dateStr && <span> • <strong style={{ color: "#fff" }}>{dateStr}</strong></span>}
-                  {progress && <span style={{ marginLeft: 12, color: BRI_ORANGE }}>{progress}</span>}
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button style={s.btnGhost} onClick={reset}>↩ Upload Baru</button>
-                  <button style={s.btnOrange} onClick={downloadAll}>
-                    ⬇️ Download Semua ({tables.length} PNG)
-                  </button>
+        return (
+          <div style={s.wrap}>
+            <div style={s.header}>
+              <div style={s.logo}>
+                <span style={{ fontSize: 26 }}>📊</span>
+                <div>
+                  <div style={s.logoTitle}>BRI TABLE EXPORTER</div>
+                  <div style={s.logoSub}>Upload Excel → Fokus Kolom A-H → PNG</div>
                 </div>
               </div>
+            </div>
 
-              <div style={s.grid}>
-                {tables.map((t, idx) => (
-                  <div key={idx} style={s.card}>
-                    <div style={s.cardHead}>
-                      <span style={s.catLabel}>{idx+1}. {t.category}</span>
-                      <button style={s.btnBlue(capturing === idx)} onClick={() => downloadOne(idx)} disabled={capturing === idx}>
-                        {capturing === idx ? "⏳ Saving..." : "⬇️ Download PNG"}
-                      </button>
+            {tables.length === 0 && (
+              <div
+                onDragOver={(e) => { e.preventDefault(); this.setState({ dragging: true }); }}
+                onDragLeave={() => this.setState({ dragging: false })}
+                onDrop={(e) => { e.preventDefault(); this.setState({ dragging: false }); this.handleFile(e.dataTransfer.files[0]); }}
+                onClick={() => this.fileInputRef.current?.click()}
+                style={s.dropzone(dragging)}
+              >
+                <div style={s.dropIcon}>{loading ? "⏳" : "📁"}</div>
+                <div style={s.dropTitle}>{loading ? "Memproses file..." : "Upload File Excel (.xlsx / .xls)"}</div>
+                {!loading && (
+                  <>
+                    <div style={s.dropSub}>Klik atau drag & drop file Excel</div>
+                    <div style={{ marginTop: 16, display: "inline-block", padding: "8px 22px", background: BRI_ORANGE, color: "#fff", borderRadius: 8, fontWeight: 700, fontSize: 13 }}>
+                      Pilih File
                     </div>
-                    <div style={{ overflowX: "auto" }}>
-                      <div ref={(el) => (tableRefs.current[idx] = el)} style={{ display: "inline-block" }}>
-                        <TableCard data={t} dateStr={dateStr} />
+                  </>
+                )}
+                <input ref={this.fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
+                  onChange={(e) => e.target.files?.[0] && this.handleFile(e.target.files[0])} />
+              </div>
+            )}
+
+            {tables.length > 0 && (
+              <>
+                <div style={s.bar}>
+                  <div style={s.info}>
+                    ✅ <strong style={{ color: BRI_ORANGE }}>{tables.length} tabel</strong> ditemukan
+                    {dateStr && <span> • <strong style={{ color: "#fff" }}>{dateStr}</strong></span>}
+                    {progress && <span style={{ marginLeft: 12, color: BRI_ORANGE }}>{progress}</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={s.btnGhost} onClick={this.reset}>↩ Upload Baru</button>
+                    <button style={s.btnOrange} onClick={this.downloadAll}>
+                      ⬇️ Download Semua ({tables.length} PNG)
+                    </button>
+                  </div>
+                </div>
+
+                <div style={s.grid}>
+                  {tables.map((t, idx) => (
+                    <div key={idx} style={s.card}>
+                      <div style={s.cardHead}>
+                        <span style={s.catLabel}>{idx+1}. {t.category}</span>
+                        <button style={s.btnBlue(capturing === idx)} onClick={() => this.downloadOne(idx)} disabled={capturing === idx}>
+                          {capturing === idx ? "⏳ Saving..." : "⬇️ Download PNG"}
+                        </button>
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <div ref={(el) => (this.tableRefs[idx] = el)} style={{ display: "inline-block" }}>
+                          <TableCard data={t} dateStr={dateStr} />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+                  ))}
+                </div>
+              </>
+            )}
 
-          {tables.length === 0 && !loading && (
-            <div style={{ textAlign: "center", marginTop: 28, color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
-              💡 Upload file Excel → Klik "Download Semua" → 6 PNG siap pakai
-            </div>
-          )}
-        </div>
-      );
+            {tables.length === 0 && !loading && (
+              <div style={{ textAlign: "center", marginTop: 28, color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
+                💡 Upload file Excel → Klik "Download Semua" → 6 PNG siap pakai
+              </div>
+            )}
+          </div>
+        );
+      }
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    ReactDOM.render(<App />, document.getElementById('root'));
   </script>
 </body>
 </html>
