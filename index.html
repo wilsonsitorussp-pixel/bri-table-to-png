@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BRI Table Exporter • Fix Persen & Merge TOTAL</title>
+  <title>BRI Table Exporter • Fix Total Mantri</title>
+  <!-- === DEPENDENSI === -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
@@ -44,6 +45,7 @@
   <h1>📊 BRI Table Exporter</h1>
   <div class="sub">Upload Excel → Pilih Sheet → Deteksi 6 Tabel → Download PNG</div>
 
+  <!-- === UPLOAD AREA === -->
   <div class="upload-area" onclick="document.getElementById('fileInput').click()">
     <div style="font-size: 40px; margin-bottom: 8px;">📁</div>
     <div style="font-weight: 600;">Klik untuk Pilih File Excel</div>
@@ -53,6 +55,7 @@
 
   <div id="status">⏳ Menunggu file...</div>
 
+  <!-- === TOOLBAR === -->
   <div class="toolbar">
     <select id="sheetSelect" disabled>
       <option>-- Pilih Sheet --</option>
@@ -63,13 +66,14 @@
   </div>
 
   <div id="tablesContainer" class="tables-grid"></div>
-  <div class="footer">Kolom BRI UNIT rata kiri • Persen akurat (0.16→16%) • TOTAL merge kiri</div>
+  <div class="footer">Kolom BRI UNIT rata kiri • TOTAL menampilkan Σ MANTRI • Persen akurat</div>
 </div>
 
 <script>
   (function(){
     "use strict";
 
+    // === GLOBAL VARIABEL ===
     let workbook = null;
     let globalTables = [];
     let globalDateStr = '';
@@ -83,6 +87,7 @@
     const container = document.getElementById('tablesContainer');
     const fileInput = document.getElementById('fileInput');
 
+    // === HELPER FUNCTIONS ===
     function getRawValue(val) {
       if (val === null || val === undefined) return '';
       return String(val).trim();
@@ -106,30 +111,20 @@
       return num.toLocaleString('id-ID');
     }
 
-    // 🔥 PERBAIKAN UTAMA: Format Persentase
     function formatPercent(val) {
       if (val === null || val === undefined) return '0,0%';
       let str = String(val).trim();
       if (str === '') return '0,0%';
-      
-      // Jika sudah mengandung '%', pertahankan (hanya ganti titik ke koma)
       if (str.includes('%')) {
         return str.replace('.', ',');
       }
-      
-      // Coba parse sebagai angka (bisa pakai koma atau titik desimal)
       const num = parseFloat(str.replace(',', '.'));
       if (isNaN(num)) return str;
-      
-      // Excel menyimpan persentase sebagai fraksi (0.16 = 16%, 1.213 = 121.3%)
-      // Selalu kalikan 100 untuk mendapatkan nilai persen sebenarnya
       const percentValue = num * 100;
-      
-      // Format dengan satu desimal, ganti titik ke koma
       return percentValue.toFixed(1).replace('.', ',') + '%';
     }
 
-    // --- Upload file ---
+    // === UPLOAD FILE ===
     fileInput.addEventListener('change', async function(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -153,7 +148,7 @@
       }
     });
 
-    // --- Load sheet & parsing ---
+    // === LOAD SHEET & PARSING ===
     window.loadSelectedSheet = function() {
       if (!workbook) return;
       const sheetName = sheetSelect.value;
@@ -247,7 +242,7 @@
       }
     };
 
-    // --- Render tabel ---
+    // === RENDER TABEL ===
     function renderTables() {
       container.innerHTML = '';
       if (globalTables.length === 0) {
@@ -270,7 +265,7 @@
         previewDiv.className = 'preview-table';
         const table = document.createElement('table');
 
-        // THEAD
+        // === THEAD ===
         const thead = document.createElement('thead');
         const tr1 = document.createElement('tr');
         for (let col = 0; col < mainHeader.length; col++) {
@@ -304,7 +299,7 @@
         }
         table.appendChild(thead);
 
-        // TBODY
+        // === TBODY ===
         const tbody = document.createElement('tbody');
         rows.forEach((row, ri) => {
           const isTotal = row.some(cell => getRawValue(cell).toUpperCase().includes('TOTAL'));
@@ -312,15 +307,25 @@
           if (isTotal) tr.classList.add('total-row');
 
           if (isTotal) {
-            // Merge kolom kiri, isi "TOTAL" rata kiri
-            const tdTotal = document.createElement('td');
-            tdTotal.colSpan = catIndex;
-            tdTotal.textContent = 'TOTAL';
-            tdTotal.style.textAlign = 'left';
-            tdTotal.style.fontWeight = 'bold';
-            tr.appendChild(tdTotal);
+            // Kolom sebelum Σ MANTRI (indeks 0 sampai catIndex-2) digabung jadi "TOTAL"
+            const mergeCount = catIndex - 1; // Σ MANTRI ada di indeks catIndex-1
+            if (mergeCount > 0) {
+              const tdTotal = document.createElement('td');
+              tdTotal.colSpan = mergeCount;
+              tdTotal.textContent = 'TOTAL';
+              tdTotal.style.textAlign = 'left';
+              tdTotal.style.fontWeight = 'bold';
+              tr.appendChild(tdTotal);
+            }
 
-            // Sel data
+            // Kolom Σ MANTRI (indeks catIndex-1)
+            const tdMantri = document.createElement('td');
+            let mantriVal = getRawValue(row[catIndex - 1]);
+            tdMantri.textContent = mantriVal === '' ? '0' : formatNumber(mantriVal);
+            tdMantri.style.textAlign = 'center';
+            tr.appendChild(tdMantri);
+
+            // Sel data (Komitmen, Hasil, Gap)
             for (let d = 0; d < dataColCount; d++) {
               const td = document.createElement('td');
               let val = getRawValue(row[dataStartCol + d]);
@@ -342,11 +347,12 @@
             td.textContent = formatPercent(rateVal);
             tr.appendChild(td);
           } else {
-            // Baris biasa
+            // Baris data biasa
             for (let col = 0; col < catIndex; col++) {
               const td = document.createElement('td');
               let val = getRawValue(row[col]);
               td.textContent = val;
+              if (col === catIndex - 1) td.style.textAlign = 'center'; // Σ MANTRI
               tr.appendChild(td);
             }
             for (let d = 0; d < dataColCount; d++) {
@@ -378,6 +384,7 @@
       });
     }
 
+    // === DOWNLOAD ===
     window.downloadSingle = async function(index) {
       const card = container.children[index];
       const previewDiv = card?.querySelector('.preview-table');
