@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BRI Table Exporter • Fix Total Mantri</title>
+  <title>BRI Table Exporter • Fix Align & Decimal</title>
   <!-- === DEPENDENSI === -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -66,7 +66,7 @@
   </div>
 
   <div id="tablesContainer" class="tables-grid"></div>
-  <div class="footer">Kolom BRI UNIT rata kiri • TOTAL menampilkan Σ MANTRI • Persen akurat</div>
+  <div class="footer">Kolom BRI UNIT rata kiri • TOTAL data rata tengah • Koma desimal dipertahankan</div>
 </div>
 
 <script>
@@ -93,9 +93,14 @@
       return String(val).trim();
     }
 
+    // Format angka: jika mengandung koma desimal (1,6) pertahankan, selain itu format ribuan
     function formatNumber(str) {
       if (!str) return '0';
+      // Jika sudah mengandung titik ribuan, biarkan
       if (str.includes('.') && str.length > 3) return str;
+      // Jika mengandung koma dan panjang pendek (misal "1,6"), anggap sebagai desimal, jangan diubah
+      if (str.includes(',') && str.length <= 5) return str;
+      // Coba parse sebagai angka
       const num = parseFloat(str.replace(/\./g, '').replace(',', '.'));
       if (isNaN(num)) return str;
       return num.toLocaleString('id-ID');
@@ -335,6 +340,7 @@
               } else {
                 td.textContent = formatNumber(val);
               }
+              td.style.textAlign = 'center'; // Pastikan rata tengah
               tr.appendChild(td);
             }
 
